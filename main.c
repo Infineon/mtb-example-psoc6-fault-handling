@@ -8,10 +8,10 @@
                find the fault location. The UART interface will be used for 
                showing ARM register information.
 *
-* Related Document: README.md
+* Related Document: See Readme.md
 *
 *******************************************************************************
-* Copyright (2019), Cypress Semiconductor Corporation. All rights reserved.
+* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
 *******************************************************************************
 * This software, including source code, documentation and related materials
 * ("Software"), is owned by Cypress Semiconductor Corporation or one of its
@@ -50,31 +50,23 @@
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
-
-
 /*******************************************************************************
 * Macros
 ********************************************************************************/
 #define CMD_USAGE_FAULT    	('u')
 #define CMD_BUS_FAULT      	('b')
 #define UART_TIMEOUT_MS		(10)	/* in milliseconds */
-
-
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
 static void configure_fault_register(void);
 static void force_bus_fault(void);
 static uint32_t force_usage_fault(uint32_t* intVal);
-
-
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
 /* Variable used for generating Bus Fault by modifying the constant variable */
 const uint32_t write_to_cause_fault_cm4 = 0u;
-
-
 /*******************************************************************************
 * Function Name: main
 ********************************************************************************
@@ -122,18 +114,18 @@ int main(void)
     printf("Press 'b' key to create Bus Fault\r\n");
     printf("Press the Reset button to start over after triggering a fault\r\n");
 
-    for(;;)
+    for (;;)
     {
     	result = cyhal_uart_getc(&cy_retarget_io_uart_obj, &cmd,
     			                 UART_TIMEOUT_MS);
-        if(result != CY_RSLT_ERR_CSP_UART_GETC_TIMEOUT)
+        if (result != CY_RSLT_ERR_CSP_UART_GETC_TIMEOUT)
         {
-            if(CMD_BUS_FAULT == cmd)
+            if (CMD_BUS_FAULT == cmd)
             {
                 printf("\r\nForce CM4 Bus Fault!\r\n");
                 force_bus_fault();
             }
-            if(CMD_USAGE_FAULT == cmd)
+            if (CMD_USAGE_FAULT == cmd)
             {
                 printf("\r\nForce CM4 Usage Fault!\r\n");
 
@@ -146,8 +138,6 @@ int main(void)
         }
     }
 }
-
-
 /*******************************************************************************
 * Function Name: configure_fault_register
 ********************************************************************************
@@ -183,8 +173,6 @@ static void configure_fault_register(void)
      */
     SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
 }
-
-
 /*******************************************************************************
 * Function Name: force_bus_fault
 ********************************************************************************
@@ -197,8 +185,6 @@ static void force_bus_fault(void)
 {
     *(uint32_t *)&write_to_cause_fault_cm4 = 10u;
 }
-
-
 /*******************************************************************************
 * Function Name: force_usage_fault
 ********************************************************************************
@@ -217,18 +203,16 @@ static void force_bus_fault(void)
 *******************************************************************************/
 static uint32_t force_usage_fault(uint32_t* intVal)
 {
-    uint32_t faultNum = 100u;
+    uint32_t fault_num = 100u;
 
     /* If *intVal = 0u then it triggers a fault because of DIVBYZERO (Divide by
      * zero). The SCB->UFSR bit 9(=CFSR bit 25) will be set to 1, once the fault
      * has occurred.
      */
-    faultNum /= *intVal;
+    fault_num /= *intVal;
 
-    return faultNum;
+    return fault_num;
 }
-
-
 /*******************************************************************************
 * Function Name: void Cy_SysLib_ProcessingFault(void)
 ********************************************************************************
@@ -270,8 +254,6 @@ void Cy_SysLib_ProcessingFault(void)
     printf("pc = 0x%08lx\r\n", cy_faultFrame.pc);
     printf("psr = 0x%08lx\r\n", cy_faultFrame.psr);
 
-    while(1);
+    while (1);
 }
-
-
 /* [] END OF FILE */
