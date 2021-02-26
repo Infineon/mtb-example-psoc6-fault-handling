@@ -11,7 +11,7 @@
 * Related Document: See Readme.md
 *
 *******************************************************************************
-* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
+* (c) 2019-2021, Cypress Semiconductor Corporation. All rights reserved.
 *******************************************************************************
 * This software, including source code, documentation and related materials
 * ("Software"), is owned by Cypress Semiconductor Corporation or one of its
@@ -50,23 +50,30 @@
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
+
 /*******************************************************************************
 * Macros
 ********************************************************************************/
-#define CMD_USAGE_FAULT    	('u')
-#define CMD_BUS_FAULT      	('b')
-#define UART_TIMEOUT_MS		(10)	/* in milliseconds */
+#define CMD_USAGE_FAULT        ('u')
+#define CMD_BUS_FAULT          ('b')
+#define UART_TIMEOUT_MS        (10)    /* in milliseconds */
+
+
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
 static void configure_fault_register(void);
 static void force_bus_fault(void);
-static uint32_t force_usage_fault(uint32_t* intVal);
+static uint32_t force_usage_fault(volatile uint32_t* intVal);
+
+
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
 /* Variable used for generating Bus Fault by modifying the constant variable */
 const uint32_t write_to_cause_fault_cm4 = 0u;
+
+
 /*******************************************************************************
 * Function Name: main
 ********************************************************************************
@@ -84,7 +91,7 @@ const uint32_t write_to_cause_fault_cm4 = 0u;
 int main(void)
 {
     uint8_t cmd;
-    uint32_t var = 0;
+    volatile uint32_t var = 0;
     cy_rslt_t result;
 
     /* Initialize the device and board peripherals */
@@ -116,8 +123,8 @@ int main(void)
 
     for (;;)
     {
-    	result = cyhal_uart_getc(&cy_retarget_io_uart_obj, &cmd,
-    			                 UART_TIMEOUT_MS);
+        result = cyhal_uart_getc(&cy_retarget_io_uart_obj, &cmd,
+                                 UART_TIMEOUT_MS);
         if (result != CY_RSLT_ERR_CSP_UART_GETC_TIMEOUT)
         {
             if (CMD_BUS_FAULT == cmd)
@@ -132,12 +139,16 @@ int main(void)
                 if (0 != force_usage_fault(&var))
                 {
                     printf("\rFailed to create CM4 Usage"\
-                    	   " Fault!\r\n");
+                           " Fault!\r\n");
                 }
+
             }
+
         }
     }
 }
+
+
 /*******************************************************************************
 * Function Name: configure_fault_register
 ********************************************************************************
@@ -172,7 +183,10 @@ static void configure_fault_register(void)
      * handler.
      */
     SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
+
 }
+
+
 /*******************************************************************************
 * Function Name: force_bus_fault
 ********************************************************************************
@@ -183,8 +197,10 @@ static void configure_fault_register(void)
 *******************************************************************************/
 static void force_bus_fault(void)
 {
-    *(uint32_t *)&write_to_cause_fault_cm4 = 10u;
+    *(volatile uint32_t *)&write_to_cause_fault_cm4 = 10u;
 }
+
+
 /*******************************************************************************
 * Function Name: force_usage_fault
 ********************************************************************************
@@ -201,9 +217,9 @@ static void force_bus_fault(void)
 *  uint32_t
 *
 *******************************************************************************/
-static uint32_t force_usage_fault(uint32_t* intVal)
+static uint32_t force_usage_fault(volatile uint32_t* intVal)
 {
-    uint32_t fault_num = 100u;
+    volatile uint32_t fault_num = 100u;
 
     /* If *intVal = 0u then it triggers a fault because of DIVBYZERO (Divide by
      * zero). The SCB->UFSR bit 9(=CFSR bit 25) will be set to 1, once the fault
@@ -213,6 +229,8 @@ static uint32_t force_usage_fault(uint32_t* intVal)
 
     return fault_num;
 }
+
+
 /*******************************************************************************
 * Function Name: void Cy_SysLib_ProcessingFault(void)
 ********************************************************************************
@@ -228,32 +246,35 @@ void Cy_SysLib_ProcessingFault(void)
 {
 
     printf("\r\nCM4 FAULT!!\r\n");
-    printf("SCB->CFSR = 0x%08lx\r\n", (uint32_t) cy_faultFrame.cfsr.cfsrReg);
+    printf("SCB->CFSR = 0x%08lx\r\n", (unsigned long) cy_faultFrame.cfsr.cfsrReg);
 
     /* If MemManage fault valid bit is set to 1, print MemManage fault address */
     if ((cy_faultFrame.cfsr.cfsrReg & SCB_CFSR_MMARVALID_Msk)
             == SCB_CFSR_MMARVALID_Msk)
     {
-        printf("MemManage Fault! Fault address = 0x%08lx\r\n", SCB->MMFAR);
+        printf("MemManage Fault! Fault address = 0x%08lx\r\n", (unsigned long)SCB->MMFAR);
     }
 
     /* If Bus Fault valid bit is set to 1, print BusFault Address */
     if ((cy_faultFrame.cfsr.cfsrReg & SCB_CFSR_BFARVALID_Msk)
             == SCB_CFSR_BFARVALID_Msk)
     {
-        printf("Bus Fault! \r\nFault address = 0x%08lx\r\n", SCB->BFAR);
+        printf("Bus Fault! \r\nFault address = 0x%08lx\r\n", (unsigned long)SCB->BFAR);
     }
 
     /* Print Fault Frame */
-    printf("r0 = 0x%08lx\r\n", cy_faultFrame.r0);
-    printf("r1 = 0x%08lx\r\n", cy_faultFrame.r1);
-    printf("r2 = 0x%08lx\r\n", cy_faultFrame.r2);
-    printf("r3 = 0x%08lx\r\n", cy_faultFrame.r3);
-    printf("r12 = 0x%08lx\r\n", cy_faultFrame.r12);
-    printf("lr = 0x%08lx\r\n", cy_faultFrame.lr);
-    printf("pc = 0x%08lx\r\n", cy_faultFrame.pc);
-    printf("psr = 0x%08lx\r\n", cy_faultFrame.psr);
+    printf("r0 = 0x%08lx\r\n", (unsigned long)cy_faultFrame.r0);
+    printf("r1 = 0x%08lx\r\n", (unsigned long)cy_faultFrame.r1);
+    printf("r2 = 0x%08lx\r\n", (unsigned long)cy_faultFrame.r2);
+    printf("r3 = 0x%08lx\r\n", (unsigned long)cy_faultFrame.r3);
+    printf("r12 = 0x%08lx\r\n", (unsigned long)cy_faultFrame.r12);
+    printf("lr = 0x%08lx\r\n", (unsigned long)cy_faultFrame.lr);
+    printf("pc = 0x%08lx\r\n", (unsigned long)cy_faultFrame.pc);
+    printf("psr = 0x%08lx\r\n", (unsigned long)cy_faultFrame.psr);
 
     while (1);
+
 }
+
+
 /* [] END OF FILE */
